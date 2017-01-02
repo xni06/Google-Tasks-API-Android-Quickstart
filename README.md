@@ -5,7 +5,7 @@ Helps facilitate the need to move tasks from the default list to another so that
 
 You can see your existing tasks [here](https://mail.google.com/tasks/canvas?pli=1) - remember to look in the _trash_!
 
-It is based on the [original quickstart](/xni06/Google-Tasks-API-Android-Quickstart/tree/master) branch but has been [modified](/xni06/Google-Tasks-API-Android-Quickstart/commit/fee0b65f3be3fd28fa88785b19f6ff1ce3494bee) so that it:
+It is based on the [original quickstart](/xni06/Google-Tasks-API-Android-Quickstart/tree/master) branch but has been [modified](/xni06/Google-Tasks-API-Android-Quickstart/tree/move-tasks-from-default-list/commit/fee0b65f3be3fd28fa88785b19f6ff1ce3494bee) so that it:
 
 1. Copies up to 100 tasks (default max results) individually from the _default_ list to the destination list called `movedTasks`
 1. Deletes the copied tasks from default list individually
