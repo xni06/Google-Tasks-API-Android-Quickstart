@@ -6,15 +6,18 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -32,22 +35,27 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.tasks.TasksScopes;
+import com.google.api.services.tasks.model.Task;
 import com.google.api.services.tasks.model.TaskList;
-import com.google.api.services.tasks.model.TaskLists;
+import com.google.api.services.tasks.model.Tasks;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
+import static android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
+
 public class MainActivity extends Activity
         implements EasyPermissions.PermissionCallbacks {
+    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String MOVED_TASKS_LIST = "movedTasks";
     GoogleAccountCredential mCredential;
     private TextView mOutputText;
     private Button mCallApiButton;
+    private MakeRequestTask mMakeRequestTask;
     ProgressDialog mProgress;
 
     static final int REQUEST_ACCOUNT_PICKER = 1000;
@@ -55,9 +63,10 @@ public class MainActivity extends Activity
     static final int REQUEST_GOOGLE_PLAY_SERVICES = 1002;
     static final int REQUEST_PERMISSION_GET_ACCOUNTS = 1003;
 
-    private static final String BUTTON_TEXT = "Call Google Tasks API";
+    private static final String BUTTON_TEXT = "Move tasks from default list";
+    private static final String DEFAULT_PROGRESS_TEXT = "Moving tasks from default list...";
     private static final String PREF_ACCOUNT_NAME = "accountName";
-    private static final String[] SCOPES = { TasksScopes.TASKS_READONLY };
+    private static final String[] SCOPES = { TasksScopes.TASKS };
 
     /**
      * Create the main activity.
@@ -66,6 +75,7 @@ public class MainActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         LinearLayout activityLayout = new LinearLayout(this);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -91,17 +101,29 @@ public class MainActivity extends Activity
         });
         activityLayout.addView(mCallApiButton);
 
+        TextView defaultMessage = new TextView(this);
+        defaultMessage.setLayoutParams(tlp);
+        defaultMessage.setPadding(16, 16, 16, 16);
+        String text = String.format("Pressing the button will move up to 100 tasks from the default list to a new list called '%s' - repeat until all tasks have been moved", MOVED_TASKS_LIST);
+        defaultMessage.setText(text);
+        activityLayout.addView(defaultMessage);
+
         mOutputText = new TextView(this);
         mOutputText.setLayoutParams(tlp);
         mOutputText.setPadding(16, 16, 16, 16);
         mOutputText.setVerticalScrollBarEnabled(true);
         mOutputText.setMovementMethod(new ScrollingMovementMethod());
-        mOutputText.setText(
-                "Click the \'" + BUTTON_TEXT +"\' button to test the API.");
         activityLayout.addView(mOutputText);
 
         mProgress = new ProgressDialog(this);
-        mProgress.setMessage("Calling Google Tasks API ...");
+        mProgress.setMessage(DEFAULT_PROGRESS_TEXT);
+        mProgress.setCanceledOnTouchOutside(false);
+        mProgress.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialogInterface) {
+                cancelTask();
+            }
+        });
 
         setContentView(activityLayout);
 
@@ -111,7 +133,15 @@ public class MainActivity extends Activity
                 .setBackOff(new ExponentialBackOff());
     }
 
+    @Override
+    protected void onPause() {
+        cancelTask();
+        super.onPause();
+    }
 
+    private void cancelTask() {
+        if (mMakeRequestTask != null) mMakeRequestTask.cancel(true);
+    }
 
     /**
      * Attempt to call the API, after verifying that all the preconditions are
@@ -128,7 +158,8 @@ public class MainActivity extends Activity
         } else if (! isDeviceOnline()) {
             mOutputText.setText("No network connection available.");
         } else {
-            new MakeRequestTask(mCredential).execute();
+            mMakeRequestTask = new MakeRequestTask(mCredential);
+            mMakeRequestTask.execute();
         }
     }
 
@@ -311,13 +342,22 @@ public class MainActivity extends Activity
         dialog.show();
     }
 
+    private void enableKeepScreenOn() {
+        getWindow().addFlags(FLAG_KEEP_SCREEN_ON);
+    }
+
+    private void disableKeepScreenOn() {
+        getWindow().clearFlags(FLAG_KEEP_SCREEN_ON);
+    }
+
     /**
      * An asynchronous task that handles the Google Tasks API call.
      * Placing the API calls in their own task ensures the UI stays responsive.
      */
-    private class MakeRequestTask extends AsyncTask<Void, Void, List<String>> {
+    private class MakeRequestTask extends AsyncTask<Void, String, Void> {
         private com.google.api.services.tasks.Tasks mService = null;
         private Exception mLastError = null;
+        String msg = "There are no tasks to move!";
 
         MakeRequestTask(GoogleAccountCredential credential) {
             HttpTransport transport = AndroidHttp.newCompatibleTransport();
@@ -333,60 +373,109 @@ public class MainActivity extends Activity
          * @param params no parameters needed for this task.
          */
         @Override
-        protected List<String> doInBackground(Void... params) {
+        protected Void doInBackground(Void... params) {
             try {
-                return getDataFromApi();
+                copyTasksFromDefaultListThenDeleteOriginals();
             } catch (Exception e) {
                 mLastError = e;
                 cancel(true);
-                return null;
             }
+            return null;
         }
 
         /**
-         * Fetch a list of the first 10 task lists.
-         * @return List of Strings describing task lists, or an empty list if
-         *         there are no task lists found.
+         * Copies up to 100 tasks (default max results) from the default list to the destination list
+         * before deleting the original task
+         * @return number of tasks moved
          * @throws IOException
          */
-        private List<String> getDataFromApi() throws IOException {
-            // List up to 10 task lists.
-            List<String> taskListInfo = new ArrayList<String>();
-            TaskLists result = mService.tasklists().list()
-                    .setMaxResults(Long.valueOf(10))
-                    .execute();
-            List<TaskList> tasklists = result.getItems();
-            if (tasklists != null) {
-                for (TaskList tasklist : tasklists) {
-                    taskListInfo.add(String.format("%s (%s)\n",
-                            tasklist.getTitle(),
-                            tasklist.getId()));
-                }
+        private void copyTasksFromDefaultListThenDeleteOriginals() throws IOException {
+            Tasks defaultTasks = mService.tasks().list("@default").execute();
+            String defaultTaskListId = getListId(defaultTasks);
+            TaskList defaultTaskList = mService.tasklists().get(defaultTaskListId).execute();
+            TaskList destinationTaskList = getListToMoveTasksToWithNameOf(MOVED_TASKS_LIST);
+
+            List<Task> tasks = defaultTasks.getItems();
+            int numberOfTasks = tasks.size();
+            int count = 0;
+            for (Task task : tasks) {
+                Task clone = task.clone();
+                clone.setId(null);
+
+                mService.tasks().insert(destinationTaskList.getId(), clone).execute();
+                mService.tasks().delete(defaultTaskList.getId(), task.getId()).execute();
+                msg = String.format("Moved %s of %s tasks", ++count, numberOfTasks);
+                publishProgress(msg);
+
+                if (isCancelled())
+                    break;
             }
-            return taskListInfo;
         }
 
+        private TaskList getListToMoveTasksToWithNameOf(String title) throws IOException {
+            String listId = null;
+            List<TaskList> taskLists = mService.tasklists().list().execute().getItems();
+            for (TaskList tasklist : taskLists) {
+                Log.d(TAG, String.format("comparing %s with %s", tasklist.getTitle(), title));
+                if (tasklist.getTitle().equals(title)) {
+                    Log.d(TAG, "match found");
+                    listId = tasklist.getId();
+                    break;
+                }
+            }
+            TaskList list;
+            if (listId == null) {
+                Log.d(TAG, "creating a new list");
+                list = mService.tasklists().insert(new TaskList().set("title", title)).execute();
+            }
+            else {
+                Log.d(TAG, "using existing list");
+                list = mService.tasklists().get(listId).execute();
+            }
+            return list;
+        }
+
+        private String getListId(Tasks tasks) {
+            Task firstTask = tasks.getItems().get(0);
+            String selfLink = firstTask.getSelfLink();
+
+            Uri uri = Uri.parse(selfLink);
+            // example https://www.googleapis.com/tasks/v1/lists/MTQwNTcwNjU5NDk3NjE4NDI0ODE6MDow/tasks/MTQwNTcwNjU5NDk3NjE4NDI0ODE6MDoxNjUwMzgwODA5
+
+            String path = uri.getPath();
+            // example /tasks/v1/lists/MTQwNTcwNjU5NDk3NjE4NDI0ODE6MDow/tasks/MTQwNTcwNjU5NDk3NjE4NDI0ODE6MDoxNjUwMzgwODA5
+
+            String id = path.split("/")[4];
+            Log.d(TAG, String.format("%s\n%s\n%s", selfLink, path, id));
+            return id;
+        }
 
         @Override
         protected void onPreExecute() {
+            enableKeepScreenOn();
             mOutputText.setText("");
             mProgress.show();
         }
 
         @Override
-        protected void onPostExecute(List<String> output) {
+        protected void onProgressUpdate(String... values) {
+            mProgress.setMessage(values[0]);
+        }
+
+        @Override
+        protected void onPostExecute(Void output) {
+            mOutputText.setText(msg);
+            taskComplete();
+        }
+
+        private void taskComplete() {
             mProgress.hide();
-            if (output == null || output.size() == 0) {
-                mOutputText.setText("No results returned.");
-            } else {
-                output.add(0, "Data retrieved using the Google Tasks API:");
-                mOutputText.setText(TextUtils.join("\n", output));
-            }
+            mProgress.setMessage(DEFAULT_PROGRESS_TEXT);
+            disableKeepScreenOn();
         }
 
         @Override
         protected void onCancelled() {
-            mProgress.hide();
             if (mLastError != null) {
                 if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
                     showGooglePlayServicesAvailabilityErrorDialog(
@@ -398,11 +487,12 @@ public class MainActivity extends Activity
                             MainActivity.REQUEST_AUTHORIZATION);
                 } else {
                     mOutputText.setText("The following error occurred:\n"
-                            + mLastError.getMessage());
+                            + mLastError.getMessage() + "\n" + msg);
                 }
             } else {
-                mOutputText.setText("Request cancelled.");
+                mOutputText.setText("Request cancelled\n" + msg);
             }
+            taskComplete();
         }
     }
 }
