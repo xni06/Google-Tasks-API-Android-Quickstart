@@ -12,12 +12,11 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -36,7 +35,6 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.tasks.TasksScopes;
 import com.google.api.services.tasks.model.Task;
-import com.google.api.services.tasks.model.TaskList;
 import com.google.api.services.tasks.model.Tasks;
 
 import java.io.IOException;
@@ -51,7 +49,8 @@ import static android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
 public class MainActivity extends Activity
         implements EasyPermissions.PermissionCallbacks {
     private static final String TAG = MainActivity.class.getSimpleName();
-    private static final String MOVED_TASKS_LIST = "movedTasks";
+//    private static final String TASK_LIST_ID = "@default";
+    private static final String TASK_LIST_ID = "MTQwNTcwNjU5NDk3NjE4NDI0ODE6MTQ2NDM4MDcxODow";
     GoogleAccountCredential mCredential;
     private TextView mOutputText;
     private Button mCallApiButton;
@@ -63,8 +62,8 @@ public class MainActivity extends Activity
     static final int REQUEST_GOOGLE_PLAY_SERVICES = 1002;
     static final int REQUEST_PERMISSION_GET_ACCOUNTS = 1003;
 
-    private static final String BUTTON_TEXT = "Move tasks from default list";
-    private static final String DEFAULT_PROGRESS_TEXT = "Moving tasks from default list...";
+    private static final String BUTTON_TEXT = "Scrub all tasks";
+    private static final String DEFAULT_PROGRESS_TEXT = "Scrubbing...";
     private static final String PREF_ACCOUNT_NAME = "accountName";
     private static final String[] SCOPES = { TasksScopes.TASKS };
 
@@ -104,8 +103,7 @@ public class MainActivity extends Activity
         TextView defaultMessage = new TextView(this);
         defaultMessage.setLayoutParams(tlp);
         defaultMessage.setPadding(16, 16, 16, 16);
-        String text = String.format("Pressing the button will move up to 100 tasks from the default list to a new list called '%s' - repeat until all tasks have been moved", MOVED_TASKS_LIST);
-        defaultMessage.setText(text);
+        defaultMessage.setText("This will effectively ensure that all tasks are scrubbed, marked as uncompleted and moved to the trash");
         activityLayout.addView(defaultMessage);
 
         mOutputText = new TextView(this);
@@ -357,7 +355,8 @@ public class MainActivity extends Activity
     private class MakeRequestTask extends AsyncTask<Void, String, Void> {
         private com.google.api.services.tasks.Tasks mService = null;
         private Exception mLastError = null;
-        String msg = "There are no tasks to move!";
+        private String msg = "There are no tasks to move!";
+        private int taskCount = 0;
 
         MakeRequestTask(GoogleAccountCredential credential) {
             HttpTransport transport = AndroidHttp.newCompatibleTransport();
@@ -368,6 +367,13 @@ public class MainActivity extends Activity
                     .build();
         }
 
+        @Override
+        protected void onPreExecute() {
+            enableKeepScreenOn();
+            mOutputText.setText("");
+            mProgress.show();
+        }
+
         /**
          * Background task to call Google Tasks API.
          * @param params no parameters needed for this task.
@@ -375,86 +381,12 @@ public class MainActivity extends Activity
         @Override
         protected Void doInBackground(Void... params) {
             try {
-                copyTasksFromDefaultListThenDeleteOriginals();
+                scrubTasks();
             } catch (Exception e) {
                 mLastError = e;
                 cancel(true);
             }
             return null;
-        }
-
-        /**
-         * Copies up to 100 tasks (default max results) from the default list to the destination list
-         * before deleting the original task
-         * @return number of tasks moved
-         * @throws IOException
-         */
-        private void copyTasksFromDefaultListThenDeleteOriginals() throws IOException {
-            Tasks defaultTasks = mService.tasks().list("@default").execute();
-            String defaultTaskListId = getListId(defaultTasks);
-            TaskList defaultTaskList = mService.tasklists().get(defaultTaskListId).execute();
-            TaskList destinationTaskList = getListToMoveTasksToWithNameOf(MOVED_TASKS_LIST);
-
-            List<Task> tasks = defaultTasks.getItems();
-            int numberOfTasks = tasks.size();
-            int count = 0;
-            for (Task task : tasks) {
-                Task clone = task.clone();
-                clone.setId(null);
-
-                mService.tasks().insert(destinationTaskList.getId(), clone).execute();
-                mService.tasks().delete(defaultTaskList.getId(), task.getId()).execute();
-                msg = String.format("Moved %s of %s tasks", ++count, numberOfTasks);
-                publishProgress(msg);
-
-                if (isCancelled())
-                    break;
-            }
-        }
-
-        private TaskList getListToMoveTasksToWithNameOf(String title) throws IOException {
-            String listId = null;
-            List<TaskList> taskLists = mService.tasklists().list().execute().getItems();
-            for (TaskList tasklist : taskLists) {
-                Log.d(TAG, String.format("comparing %s with %s", tasklist.getTitle(), title));
-                if (tasklist.getTitle().equals(title)) {
-                    Log.d(TAG, "match found");
-                    listId = tasklist.getId();
-                    break;
-                }
-            }
-            TaskList list;
-            if (listId == null) {
-                Log.d(TAG, "creating a new list");
-                list = mService.tasklists().insert(new TaskList().set("title", title)).execute();
-            }
-            else {
-                Log.d(TAG, "using existing list");
-                list = mService.tasklists().get(listId).execute();
-            }
-            return list;
-        }
-
-        private String getListId(Tasks tasks) {
-            Task firstTask = tasks.getItems().get(0);
-            String selfLink = firstTask.getSelfLink();
-
-            Uri uri = Uri.parse(selfLink);
-            // example https://www.googleapis.com/tasks/v1/lists/MTQwNTcwNjU5NDk3NjE4NDI0ODE6MDow/tasks/MTQwNTcwNjU5NDk3NjE4NDI0ODE6MDoxNjUwMzgwODA5
-
-            String path = uri.getPath();
-            // example /tasks/v1/lists/MTQwNTcwNjU5NDk3NjE4NDI0ODE6MDow/tasks/MTQwNTcwNjU5NDk3NjE4NDI0ODE6MDoxNjUwMzgwODA5
-
-            String id = path.split("/")[4];
-            Log.d(TAG, String.format("%s\n%s\n%s", selfLink, path, id));
-            return id;
-        }
-
-        @Override
-        protected void onPreExecute() {
-            enableKeepScreenOn();
-            mOutputText.setText("");
-            mProgress.show();
         }
 
         @Override
@@ -466,12 +398,6 @@ public class MainActivity extends Activity
         protected void onPostExecute(Void output) {
             mOutputText.setText(msg);
             taskComplete();
-        }
-
-        private void taskComplete() {
-            mProgress.hide();
-            mProgress.setMessage(DEFAULT_PROGRESS_TEXT);
-            disableKeepScreenOn();
         }
 
         @Override
@@ -494,5 +420,51 @@ public class MainActivity extends Activity
             }
             taskComplete();
         }
-    }
+
+        private void scrubTasks() throws IOException {
+            Tasks tasks;
+            String nextPageToken = "firstRun";
+            while (!TextUtils.isEmpty(nextPageToken)) {
+                tasks = getAllTasksIncludingDeleted();
+                for (Task task : tasks.getItems()) {
+                    task = scrub(task);
+                    updateTask(task);
+
+                    msg = "Number of tasks scrubbed: " + ++taskCount;
+                    publishProgress(msg);
+
+                    if (isCancelled())
+                        return;
+
+                }
+                nextPageToken = tasks.getNextPageToken();
+            }
+        }
+
+        private Tasks getAllTasksIncludingDeleted() throws IOException {
+            return mService.tasks().list(TASK_LIST_ID).setShowDeleted(true).execute();
+        }
+
+        private Task scrub(Task task) {
+            Task t = new Task();
+            t.setId(task.getId());
+            t.setTitle("scrubbed title");
+            t.setNotes("scrubbed notes");
+            t.setDeleted(true);
+            t.setStatus("needsAction");
+            t.setDue(null);
+            return t;
+        }
+
+        private void updateTask(Task t) throws IOException {
+            mService.tasks().update(TASK_LIST_ID, t.getId(), t).execute();
+        }
+
+        private void taskComplete() {
+            mProgress.hide();
+            mProgress.setMessage(DEFAULT_PROGRESS_TEXT);
+            disableKeepScreenOn();
+        }
+
+   }
 }
