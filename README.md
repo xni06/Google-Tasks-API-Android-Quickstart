@@ -1,7 +1,7 @@
 
-## Delete Google Tasks from your _default_ list
+## Google Tasks _default_ list Scrubber!
 ### What is it
-Helps facilitate the need to move tasks from the default list to another so that they can be deleted as mentioned in [this](https://productforums.google.com/d/msg/gmail/yKbRwhi6hYU/2QXGlAfwQx4J) posting.
+Scrubs all deleted tasks in a given list having first moved all completed tasks there too - helps address [this](https://productforums.google.com/d/msg/gmail/yKbRwhi6hYU/2QXGlAfwQx4J) issue.
 
 You can see your existing tasks [here](https://mail.google.com/tasks/canvas?pli=1) - remember to look in the _trash_!
 
