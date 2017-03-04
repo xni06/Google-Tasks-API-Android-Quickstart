@@ -48,9 +48,11 @@ import static android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
 
 public class MainActivity extends Activity
         implements EasyPermissions.PermissionCallbacks {
-    private static final String TAG = MainActivity.class.getSimpleName();
 //    private static final String TASK_LIST_ID = "@default";
     private static final String TASK_LIST_ID = "MTQwNTcwNjU5NDk3NjE4NDI0ODE6MTQ2NDM4MDcxODow";
+
+    // MTQwNTcwNjU5NDk3NjE4NDI0ODE6MDow - default
+    // MTQwNTcwNjU5NDk3NjE4NDI0ODE6MTQ2NDM4MDcxODow - test
     GoogleAccountCredential mCredential;
     private TextView mOutputText;
     private Button mCallApiButton;
@@ -422,10 +424,8 @@ public class MainActivity extends Activity
         }
 
         private void scrubTasks() throws IOException {
-            Tasks tasks;
-            String nextPageToken = "firstRun";
-            while (!TextUtils.isEmpty(nextPageToken)) {
-                tasks = getAllTasksIncludingDeleted();
+            Tasks tasks = getFirstPageOfAllTasksIncludingDeleted();
+            do {
                 for (Task task : tasks.getItems()) {
                     task = scrub(task);
                     updateTask(task);
@@ -437,12 +437,27 @@ public class MainActivity extends Activity
                         return;
 
                 }
-                nextPageToken = tasks.getNextPageToken();
+                tasks = getAllTasksIncludingDeletedUsing(tasks.getNextPageToken());
             }
+            while (!TextUtils.isEmpty(tasks.getNextPageToken()));
         }
 
-        private Tasks getAllTasksIncludingDeleted() throws IOException {
-            return mService.tasks().list(TASK_LIST_ID).setShowDeleted(true).execute();
+
+        private Tasks getFirstPageOfAllTasksIncludingDeleted() throws IOException {
+            return getAllTasksIncludingDeletedUsing(null);
+        }
+
+        private Tasks getAllTasksIncludingDeletedUsing(String pageToken) throws IOException {
+            com.google.api.services.tasks.Tasks.TasksOperations.List l =
+                    mService.tasks()
+                            .list(TASK_LIST_ID)
+                            .setShowDeleted(true)
+                            .setShowCompleted(true)
+                            .setShowHidden(true);
+
+            if (!TextUtils.isEmpty(pageToken))
+                l.setPageToken(pageToken);
+            return l.execute();
         }
 
         private Task scrub(Task task) {
