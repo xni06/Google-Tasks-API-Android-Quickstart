@@ -15,12 +15,10 @@ import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
-import android.text.method.ScrollingMovementMethod;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -35,6 +33,8 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.tasks.TasksScopes;
 import com.google.api.services.tasks.model.Task;
+import com.google.api.services.tasks.model.TaskList;
+import com.google.api.services.tasks.model.TaskLists;
 import com.google.api.services.tasks.model.Tasks;
 
 import java.io.IOException;
@@ -56,7 +56,8 @@ public class MainActivity extends Activity
     GoogleAccountCredential mCredential;
     private TextView mOutputText;
     private Button mCallApiButton;
-    private MakeRequestTask mMakeRequestTask;
+//    private MakeRequestTask mMakeRequestTask;
+    private GetTasksListsTask mMakeRequestTask;
     ProgressDialog mProgress;
 
     static final int REQUEST_ACCOUNT_PICKER = 1000;
@@ -69,6 +70,12 @@ public class MainActivity extends Activity
     private static final String PREF_ACCOUNT_NAME = "accountName";
     private static final String[] SCOPES = { TasksScopes.TASKS };
 
+
+    private RecyclerView mRecyclerView;
+    private RecyclerView.Adapter mAdapter;
+    private RecyclerView.LayoutManager mLayoutManager;
+    private String[] myDataset = {"one", "two", "three", "four"};
+
     /**
      * Create the main activity.
      * @param savedInstanceState previously saved instance data.
@@ -77,43 +84,62 @@ public class MainActivity extends Activity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        LinearLayout activityLayout = new LinearLayout(this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT);
-        activityLayout.setLayoutParams(lp);
-        activityLayout.setOrientation(LinearLayout.VERTICAL);
-        activityLayout.setPadding(16, 16, 16, 16);
 
-        ViewGroup.LayoutParams tlp = new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
+////////////////
+        setContentView(R.layout.activity_main3);
 
-        mCallApiButton = new Button(this);
-        mCallApiButton.setText(BUTTON_TEXT);
-        mCallApiButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mCallApiButton.setEnabled(false);
-                mOutputText.setText("");
-                getResultsFromApi();
-                mCallApiButton.setEnabled(true);
-            }
-        });
-        activityLayout.addView(mCallApiButton);
+        mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
-        TextView defaultMessage = new TextView(this);
-        defaultMessage.setLayoutParams(tlp);
-        defaultMessage.setPadding(16, 16, 16, 16);
-        defaultMessage.setText("This will effectively ensure that all tasks are scrubbed, marked as uncompleted and moved to the trash");
-        activityLayout.addView(defaultMessage);
+        // use this setting to improve performance if you know that changes
+        // in content do not change the layout size of the RecyclerView
+        mRecyclerView.setHasFixedSize(true);
 
-        mOutputText = new TextView(this);
-        mOutputText.setLayoutParams(tlp);
-        mOutputText.setPadding(16, 16, 16, 16);
-        mOutputText.setVerticalScrollBarEnabled(true);
-        mOutputText.setMovementMethod(new ScrollingMovementMethod());
-        activityLayout.addView(mOutputText);
+        // use a linear layout manager
+        mLayoutManager = new LinearLayoutManager(this);
+        mRecyclerView.setLayoutManager(mLayoutManager);
+
+        // specify an adapter (see also next example)
+//        mAdapter = new TaskListsRecyclerViewAdapter(myDataset);
+//        mRecyclerView.setAdapter(mAdapter);
+////////////////
+
+//        LinearLayout activityLayout = new LinearLayout(this);
+//        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+//                LinearLayout.LayoutParams.MATCH_PARENT,
+//                LinearLayout.LayoutParams.MATCH_PARENT);
+//        activityLayout.setLayoutParams(lp);
+//        activityLayout.setOrientation(LinearLayout.VERTICAL);
+//        activityLayout.setPadding(16, 16, 16, 16);
+//
+//        ViewGroup.LayoutParams tlp = new ViewGroup.LayoutParams(
+//                ViewGroup.LayoutParams.WRAP_CONTENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT);
+//
+//        mCallApiButton = new Button(this);
+//        mCallApiButton.setText(BUTTON_TEXT);
+//        mCallApiButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mCallApiButton.setEnabled(false);
+//                mOutputText.setText("");
+//                getResultsFromApi();
+//                mCallApiButton.setEnabled(true);
+//            }
+//        });
+//        activityLayout.addView(mCallApiButton);
+//
+//        TextView defaultMessage = new TextView(this);
+//        defaultMessage.setLayoutParams(tlp);
+//        defaultMessage.setPadding(16, 16, 16, 16);
+//        defaultMessage.setText("This will effectively ensure that all tasks are scrubbed, marked as uncompleted and moved to the trash");
+//        activityLayout.addView(defaultMessage);
+//
+//        mOutputText = new TextView(this);
+//        mOutputText.setLayoutParams(tlp);
+//        mOutputText.setPadding(16, 16, 16, 16);
+//        mOutputText.setVerticalScrollBarEnabled(true);
+//        mOutputText.setMovementMethod(new ScrollingMovementMethod());
+//        activityLayout.addView(mOutputText);
 
         mProgress = new ProgressDialog(this);
         mProgress.setMessage(DEFAULT_PROGRESS_TEXT);
@@ -125,7 +151,7 @@ public class MainActivity extends Activity
             }
         });
 
-        setContentView(activityLayout);
+//        setContentView(activityLayout);
 
         // Initialize credentials and service object.
         mCredential = GoogleAccountCredential.usingOAuth2(
@@ -137,6 +163,12 @@ public class MainActivity extends Activity
     protected void onPause() {
         cancelTask();
         super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        getResultsFromApi();
     }
 
     private void cancelTask() {
@@ -158,7 +190,8 @@ public class MainActivity extends Activity
         } else if (! isDeviceOnline()) {
             mOutputText.setText("No network connection available.");
         } else {
-            mMakeRequestTask = new MakeRequestTask(mCredential);
+//            mMakeRequestTask = new MakeRequestTask(mCredential);
+            mMakeRequestTask = new GetTasksListsTask(mCredential);
             mMakeRequestTask.execute();
         }
     }
@@ -215,9 +248,9 @@ public class MainActivity extends Activity
         switch(requestCode) {
             case REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode != RESULT_OK) {
-                    mOutputText.setText(
-                            "This app requires Google Play Services. Please install " +
-                                    "Google Play Services on your device and relaunch this app.");
+//                    mOutputText.setText(
+//                            "This app requires Google Play Services. Please install " +
+//                                    "Google Play Services on your device and relaunch this app.");
                 } else {
                     getResultsFromApi();
                 }
@@ -372,7 +405,7 @@ public class MainActivity extends Activity
         @Override
         protected void onPreExecute() {
             enableKeepScreenOn();
-            mOutputText.setText("");
+//            mOutputText.setText("");
             mProgress.show();
         }
 
@@ -398,7 +431,7 @@ public class MainActivity extends Activity
 
         @Override
         protected void onPostExecute(Void output) {
-            mOutputText.setText(msg);
+//            mOutputText.setText(msg);
             taskComplete();
         }
 
@@ -414,11 +447,11 @@ public class MainActivity extends Activity
                             ((UserRecoverableAuthIOException) mLastError).getIntent(),
                             MainActivity.REQUEST_AUTHORIZATION);
                 } else {
-                    mOutputText.setText("The following error occurred:\n"
-                            + mLastError.getMessage() + "\n" + msg);
+//                    mOutputText.setText("The following error occurred:\n"
+//                            + mLastError.getMessage() + "\n" + msg);
                 }
             } else {
-                mOutputText.setText("Request cancelled\n" + msg);
+//                mOutputText.setText("Request cancelled\n" + msg);
             }
             taskComplete();
         }
@@ -481,5 +514,87 @@ public class MainActivity extends Activity
             disableKeepScreenOn();
         }
 
-   }
+    }
+
+    private class GetTasksListsTask extends AsyncTask<Object, Object, TaskLists> {
+        private com.google.api.services.tasks.Tasks mService = null;
+        private Exception mLastError = null;
+        private String msg = "There are no tasks to move!";
+        private int taskCount = 0;
+
+        GetTasksListsTask(GoogleAccountCredential credential) {
+            HttpTransport transport = AndroidHttp.newCompatibleTransport();
+            JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+            mService = new com.google.api.services.tasks.Tasks.Builder(
+                    transport, jsonFactory, credential)
+                    .setApplicationName("Google Tasks API Android Quickstart")
+                    .build();
+        }
+
+        @Override
+        protected void onPreExecute() {
+            enableKeepScreenOn();
+//            mOutputText.setText("");
+            mProgress.show();
+        }
+
+        @Override
+        protected TaskLists doInBackground(Object... params) {
+            try {
+                return mService.tasklists().list().execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+//            return mService.tasklists();
+//            try {
+//                mService.tasklists();
+//            } catch (Exception e) {
+//                mLastError = e;
+//                cancel(true);
+//            }
+            return null;
+        }
+
+//        @Override
+//        protected void onProgressUpdate(String... values) {
+//            mProgress.setMessage(values[0]);
+//        }
+
+        @Override
+        protected void onPostExecute(TaskLists output) {
+//            mOutputText.setText(msg);
+            List<TaskList> items = output.getItems();
+            mAdapter =  new TaskListsRecyclerViewAdapter(MainActivity.this, output);
+            mRecyclerView.setAdapter(mAdapter);
+            taskComplete();
+        }
+
+        @Override
+        protected void onCancelled() {
+            if (mLastError != null) {
+                if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
+                    showGooglePlayServicesAvailabilityErrorDialog(
+                            ((GooglePlayServicesAvailabilityIOException) mLastError)
+                                    .getConnectionStatusCode());
+                } else if (mLastError instanceof UserRecoverableAuthIOException) {
+                    startActivityForResult(
+                            ((UserRecoverableAuthIOException) mLastError).getIntent(),
+                            MainActivity.REQUEST_AUTHORIZATION);
+                } else {
+//                    mOutputText.setText("The following error occurred:\n"
+//                            + mLastError.getMessage() + "\n" + msg);
+                }
+            } else {
+//                mOutputText.setText("Request cancelled\n" + msg);
+            }
+            taskComplete();
+        }
+
+        private void taskComplete() {
+            mProgress.hide();
+            mProgress.setMessage(DEFAULT_PROGRESS_TEXT);
+            disableKeepScreenOn();
+        }
+
+    }
 }
