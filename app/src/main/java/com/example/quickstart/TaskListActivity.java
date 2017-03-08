@@ -64,7 +64,7 @@ public class TaskListActivity extends Activity
     static final int REQUEST_PERMISSION_GET_ACCOUNTS = 1003;
 
     private static final String BUTTON_TEXT = "Scrub all tasks";
-    private static final String DEFAULT_PROGRESS_TEXT = "Scrubbing...";
+    private static final String DEFAULT_PROGRESS_TEXT = "Obtaining tasks...";
     private static final String PREF_ACCOUNT_NAME = "accountName";
     private static final String[] SCOPES = { TasksScopes.TASKS };
 
