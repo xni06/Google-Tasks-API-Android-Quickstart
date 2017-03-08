@@ -39,7 +39,7 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
                     Log.d(TAG, "Element " + getAdapterPosition() + " clicked.");
                     String msg = textView.getText().toString() + " " + textView3.getText().toString();
                     Log.d(TAG, msg);
-                    listener.onClick(textView2.getText().toString());
+                    listener.onClick(textView.getText().toString());
                 }
             });
         }
@@ -66,7 +66,7 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
         OnClickListener onClickListener = new OnClickListener() {
             @Override
             public void onClick(String id) {
-                ((MainActivity) context).onTaskListSelected(id);
+                ((TaskListActivity) context).onTaskSelected(id);
             }
         };
         return new ViewHolder(v, onClickListener);

@@ -21,6 +21,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
@@ -93,6 +94,7 @@ public class TaskListActivity extends Activity
 
         mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
+
         // use this setting to improve performance if you know that changes
         // in content do not change the layout size of the RecyclerView
         mRecyclerView.setHasFixedSize(true);
@@ -117,6 +119,7 @@ public class TaskListActivity extends Activity
                 .setBackOff(new ExponentialBackOff());
     }
 
+
     @Override
     protected void onPause() {
         cancelTask();
@@ -127,6 +130,14 @@ public class TaskListActivity extends Activity
     protected void onResume() {
         super.onResume();
         getResultsFromApi();
+    }
+
+    public void onTaskSelected(String id) {
+        Toast.makeText(this, id, Toast.LENGTH_SHORT).show();
+
+//        Intent intent = new Intent(this, TaskListActivity.class);
+//        intent.putExtra(TaskListActivity.EXTRA_TASK_LIST_ID, id);
+//        startActivity(intent);
     }
 
     private void cancelTask() {
