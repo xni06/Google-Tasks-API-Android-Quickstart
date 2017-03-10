@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.google.api.services.tasks.model.TaskList;
 import com.google.api.services.tasks.model.TaskLists;
 
 public class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskListsRecyclerViewAdapter.ViewHolder> {
@@ -23,28 +24,20 @@ public class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskLists
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         private final TextView textView;
-        private final TextView textView2;
 
         public ViewHolder(View v, final OnClickListener listener) {
             super(v);
             textView = (TextView) v.findViewById(R.id.textView);
-            textView2 = (TextView) v.findViewById(R.id.textView2);
             v.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Log.d(TAG, "Element " + getAdapterPosition() + " clicked.");
-                    String msg = textView.getText().toString() + " " + textView2.getText().toString();
-                    Log.d(TAG, msg);
-                    listener.onClick(textView2.getText().toString());
+                    listener.onClick(String.valueOf(getAdapterPosition()));
                 }
             });
         }
 
         public TextView getTextView() {
             return textView;
-        }
-        public TextView getTextView2() {
-            return textView2;
         }
     }
 
@@ -59,7 +52,8 @@ public class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskLists
         OnClickListener onClickListener = new OnClickListener() {
             @Override
             public void onClick(String id) {
-                ((MainActivity) context).onTaskListSelected(id);
+                TaskList taskList = mDataSet.getItems().get(Integer.parseInt(id));
+                ((MainActivity) context).onTaskListSelected(taskList.getId());
             }
         };
         return new ViewHolder(v, onClickListener);
@@ -69,7 +63,6 @@ public class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskLists
     public void onBindViewHolder(ViewHolder viewHolder, final int position) {
         Log.d(TAG, "Element " + position + " set.");
         viewHolder.getTextView().setText(mDataSet.getItems().get(position).getTitle());
-        viewHolder.getTextView2().setText(mDataSet.getItems().get(position).getId());
     }
 
     @Override
