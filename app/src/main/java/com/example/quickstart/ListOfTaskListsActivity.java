@@ -3,7 +3,6 @@ package com.example.quickstart;
 import android.Manifest;
 import android.accounts.AccountManager;
 import android.app.Activity;
-import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -17,8 +16,6 @@ import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
@@ -26,12 +23,9 @@ import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecovera
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.client.util.ExponentialBackOff;
-import com.google.api.services.tasks.TasksScopes;
 import com.google.api.services.tasks.model.TaskLists;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 import pub.devrel.easypermissions.AfterPermissionGranted;
@@ -41,7 +35,7 @@ import static android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
 import static pub.devrel.easypermissions.EasyPermissions.PermissionCallbacks;
 import static pub.devrel.easypermissions.EasyPermissions.hasPermissions;
 
-public class ListOfTaskListsActivity extends Activity implements PermissionCallbacks {
+public class ListOfTaskListsActivity extends Activity implements PermissionCallbacks, Contract.View {
 
     private GoogleAccountCredential mCredential;
     private GetTasksListsTask mMakeRequestTask;
@@ -49,15 +43,13 @@ public class ListOfTaskListsActivity extends Activity implements PermissionCallb
 
     private static final int REQUEST_ACCOUNT_PICKER = 1000;
     private static final int REQUEST_AUTHORIZATION = 1001;
-    private static final int REQUEST_GOOGLE_PLAY_SERVICES = 1002;
     private static final int REQUEST_PERMISSION_GET_ACCOUNTS = 1003;
 
     private static final String DEFAULT_PROGRESS_TEXT = "Obtaining task lists...";
     private static final String PREF_ACCOUNT_NAME = "accountName";
-    private static final String[] SCOPES = {TasksScopes.TASKS};
-
 
     private RecyclerView mRecyclerView;
+    private Contract.Presenter presenter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +57,8 @@ public class ListOfTaskListsActivity extends Activity implements PermissionCallb
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         setContentView(R.layout.activity_list_of_task_lists);
+
+        presenter = new PresenterImpl(this, this);
 
         mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
         mRecyclerView.setHasFixedSize(true);
@@ -82,12 +76,7 @@ public class ListOfTaskListsActivity extends Activity implements PermissionCallb
             }
         });
 
-        mCredential = getGoogleAccountCredential();
-    }
-
-    private GoogleAccountCredential getGoogleAccountCredential() {
-        return GoogleAccountCredential.usingOAuth2(getApplicationContext(), Arrays.asList(SCOPES))
-                .setBackOff(new ExponentialBackOff());
+        mCredential = presenter.getGoogleAccountCredential();
     }
 
     @Override
@@ -107,8 +96,8 @@ public class ListOfTaskListsActivity extends Activity implements PermissionCallb
     }
 
     private void executeGetTasksListsTask() {
-        if (!isGooglePlayServicesAvailable()) {
-            acquireGooglePlayServices();
+        if (!presenter.isGooglePlayServicesAvailable()) {
+            presenter.acquireGooglePlayServices();
         } else if (mCredential.getSelectedAccountName() == null) {
             chooseAccount();
         } else {
@@ -140,7 +129,7 @@ public class ListOfTaskListsActivity extends Activity implements PermissionCallb
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         switch (requestCode) {
-            case REQUEST_GOOGLE_PLAY_SERVICES:
+            case Contract.Presenter.REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode == RESULT_OK)
                     executeGetTasksListsTask();
                 break;
@@ -178,29 +167,6 @@ public class ListOfTaskListsActivity extends Activity implements PermissionCallb
 
     @Override
     public void onPermissionsDenied(int requestCode, List<String> list) {
-    }
-
-    private boolean isGooglePlayServicesAvailable() {
-        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
-        final int connectionStatusCode = apiAvailability.isGooglePlayServicesAvailable(this);
-        return connectionStatusCode == ConnectionResult.SUCCESS;
-    }
-
-    private void acquireGooglePlayServices() {
-        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
-        final int connectionStatusCode = apiAvailability.isGooglePlayServicesAvailable(this);
-        if (apiAvailability.isUserResolvableError(connectionStatusCode))
-            showGooglePlayServicesAvailabilityErrorDialog(connectionStatusCode);
-    }
-
-
-    private void showGooglePlayServicesAvailabilityErrorDialog(final int connectionStatusCode) {
-        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
-        Dialog dialog = apiAvailability.getErrorDialog(
-                ListOfTaskListsActivity.this,
-                connectionStatusCode,
-                REQUEST_GOOGLE_PLAY_SERVICES);
-        dialog.show();
     }
 
     private void enableKeepScreenOn() {
@@ -258,7 +224,7 @@ public class ListOfTaskListsActivity extends Activity implements PermissionCallb
         protected void onCancelled() {
             if (mLastError != null) {
                 if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
-                    showGooglePlayServicesAvailabilityErrorDialog(
+                    presenter.showGooglePlayServicesAvailabilityErrorDialog(
                             ((GooglePlayServicesAvailabilityIOException) mLastError)
                                     .getConnectionStatusCode());
                 } else if (mLastError instanceof UserRecoverableAuthIOException) {
