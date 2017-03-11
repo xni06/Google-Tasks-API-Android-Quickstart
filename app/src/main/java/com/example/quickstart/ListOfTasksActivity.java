@@ -57,8 +57,8 @@ public class ListOfTasksActivity extends Activity
     GoogleAccountCredential mCredential;
     private TextView mOutputText;
     private Button mCallApiButton;
-//    private MakeRequestTask mMakeRequestTask;
-    private GetTasksTask mMakeRequestTask;
+    private ScrubTasks mScrubTasks;
+    private GetTasksTask mGetTasksTask;
     ProgressDialog mProgress;
 
     static final int REQUEST_ACCOUNT_PICKER = 1000;
@@ -142,7 +142,8 @@ public class ListOfTasksActivity extends Activity
     }
 
     private void cancelTask() {
-        if (mMakeRequestTask != null) mMakeRequestTask.cancel(true);
+        if (mGetTasksTask != null) mGetTasksTask.cancel(true);
+        if (mScrubTasks != null) mScrubTasks.cancel(true);
     }
 
     /**
@@ -158,8 +159,8 @@ public class ListOfTasksActivity extends Activity
         } else if (! isDeviceOnline()) {
             mOutputText.setText("No network connection available.");
         } else {
-            mMakeRequestTask = new GetTasksTask(mCredential);
-            mMakeRequestTask.execute();
+            mGetTasksTask = new GetTasksTask(mCredential);
+            mGetTasksTask.execute();
         }
     }
 
@@ -306,13 +307,13 @@ public class ListOfTasksActivity extends Activity
         getWindow().clearFlags(FLAG_KEEP_SCREEN_ON);
     }
 
-    private class MakeRequestTask extends AsyncTask<Void, String, Void> {
+    private class ScrubTasks extends AsyncTask<Void, String, Void> {
         private com.google.api.services.tasks.Tasks mService = null;
         private Exception mLastError = null;
         private String msg = "There are no tasks to move!";
         private int taskCount = 0;
 
-        MakeRequestTask(GoogleAccountCredential credential) {
+        ScrubTasks(GoogleAccountCredential credential) {
             HttpTransport transport = AndroidHttp.newCompatibleTransport();
             JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
             mService = new com.google.api.services.tasks.Tasks.Builder(
@@ -575,6 +576,8 @@ public class ListOfTasksActivity extends Activity
 
     public void onMoveCompetedToBinAndScrub(View view) {
         Log.d(TAG, "onMoveCompetedToBinAndScrub");
+        mScrubTasks = new ScrubTasks(mCredential);
+        mScrubTasks.execute();
     }
 
 }
