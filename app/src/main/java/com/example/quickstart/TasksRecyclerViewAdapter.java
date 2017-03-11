@@ -2,7 +2,6 @@ package com.example.quickstart;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,25 +11,23 @@ import com.google.api.services.tasks.model.Task;
 
 import java.util.List;
 
-public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecyclerViewAdapter.ViewHolder> {
-    private static final String TAG = TasksRecyclerViewAdapter.class.getSimpleName();
+class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecyclerViewAdapter.ViewHolder> {
 
     private Context context;
     private List<Task> mDataSet;
 
-    public TasksRecyclerViewAdapter(Context context, List<Task> output) {
-        this.context = context;
-        mDataSet = output;
+    interface OnClickListener {
+        void onClick(String id);
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        private final TextView textView;
-        private final TextView textView2;
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        private final TextView title;
+        private final TextView note;
 
-        public ViewHolder(View v, final OnClickListener listener) {
+        ViewHolder(View v, final OnClickListener listener) {
             super(v);
-            textView = (TextView) v.findViewById(R.id.textView);
-            textView2 = (TextView) v.findViewById(R.id.textView2);
+            title = (TextView) v.findViewById(R.id.title);
+            note = (TextView) v.findViewById(R.id.note);
             v.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -39,16 +36,19 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
             });
         }
 
-        public TextView getTextView() {
-            return textView;
+        TextView getTitle() {
+            return title;
         }
-        public TextView getTextView2() {
-            return textView2;
+
+        TextView getNote() {
+            return note;
         }
+
     }
 
-    interface OnClickListener {
-        void onClick(String id);
+    TasksRecyclerViewAdapter(Context context, List<Task> output) {
+        this.context = context;
+        mDataSet = output;
     }
 
     @Override
@@ -67,9 +67,8 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
 
     @Override
     public void onBindViewHolder(ViewHolder viewHolder, final int position) {
-        Log.d(TAG, "Element " + position + " set.");
-        viewHolder.getTextView().setText(mDataSet.get(position).getTitle());
-        viewHolder.getTextView2().setText(mDataSet.get(position).getNotes());
+        viewHolder.getTitle().setText(mDataSet.get(position).getTitle());
+        viewHolder.getNote().setText(mDataSet.get(position).getNotes());
     }
 
     @Override

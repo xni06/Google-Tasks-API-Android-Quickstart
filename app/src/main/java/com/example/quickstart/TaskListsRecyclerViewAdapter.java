@@ -2,7 +2,6 @@ package com.example.quickstart;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,23 +10,22 @@ import android.widget.TextView;
 import com.google.api.services.tasks.model.TaskList;
 import com.google.api.services.tasks.model.TaskLists;
 
-public class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskListsRecyclerViewAdapter.ViewHolder> {
-    private static final String TAG = TaskListsRecyclerViewAdapter.class.getSimpleName();
+class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskListsRecyclerViewAdapter.ViewHolder> {
 
-    private Context context;
-    private TaskLists mDataSet;
+    private final Context context;
+    private final TaskLists mDataSet;
 
-    public TaskListsRecyclerViewAdapter(Context context, TaskLists output) {
-        this.context = context;
-        mDataSet = output;
+    interface OnClickListener {
+        void onClick(String id);
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        private final TextView textView;
+    static class ViewHolder extends RecyclerView.ViewHolder {
 
-        public ViewHolder(View v, final OnClickListener listener) {
+        private final TextView title;
+
+        ViewHolder(View v, final OnClickListener listener) {
             super(v);
-            textView = (TextView) v.findViewById(R.id.textView);
+            title = (TextView) v.findViewById(R.id.title);
             v.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -36,13 +34,15 @@ public class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskLists
             });
         }
 
-        public TextView getTextView() {
-            return textView;
+        TextView getTitle() {
+            return title;
         }
+
     }
 
-    interface OnClickListener {
-        void onClick(String id);
+    TaskListsRecyclerViewAdapter(Context context, TaskLists output) {
+        this.context = context;
+        mDataSet = output;
     }
 
     @Override
@@ -61,8 +61,7 @@ public class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskLists
 
     @Override
     public void onBindViewHolder(ViewHolder viewHolder, final int position) {
-        Log.d(TAG, "Element " + position + " set.");
-        viewHolder.getTextView().setText(mDataSet.getItems().get(position).getTitle());
+        viewHolder.getTitle().setText(mDataSet.getItems().get(position).getTitle());
     }
 
     @Override

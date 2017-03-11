@@ -3,17 +3,18 @@
     android:layout_height="@dimen/list_item_height"
     android:layout_marginLeft="16dp"
     android:layout_marginRight="16dp"
-    android:orientation="vertical"
-    android:gravity="center_vertical">
+    android:gravity="center_vertical"
+    android:orientation="vertical">
 
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Task list"/>
+        android:text="Task list" />
+
     <TextView
-        android:id="@+id/textView2"
+        android:id="@+id/note"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Task list"/>
+        android:text="Task list" />
 </LinearLayout>

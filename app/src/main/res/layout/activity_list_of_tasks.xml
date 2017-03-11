@@ -14,7 +14,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:onClick="onMoveCompetedToBin"
-            android:text="Completed -> Bin" />
+            android:text="@string/completed_bin" />
 
         <Button
             android:id="@+id/button_move_completed_to_bin_and_scrub"
@@ -22,7 +22,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:onClick="onMoveCompetedToBinAndScrub"
-            android:text="Completed -> Bin + Scrub" />
+            android:text="@string/completed_bin_scrub" />
     </LinearLayout>
 
     <android.support.v7.widget.RecyclerView
