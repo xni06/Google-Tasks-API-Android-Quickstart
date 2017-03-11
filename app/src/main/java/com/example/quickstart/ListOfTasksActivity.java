@@ -19,6 +19,7 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -44,10 +45,10 @@ import pub.devrel.easypermissions.EasyPermissions;
 
 import static android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
 
-public class TaskListActivity extends Activity
+public class ListOfTasksActivity extends Activity
         implements EasyPermissions.PermissionCallbacks {
     public static final String EXTRA_TASK_LIST_ID = "task_list_id";
-    private static final String TAG = TaskListActivity.class.getSimpleName();
+    private static final String TAG = ListOfTasksActivity.class.getSimpleName();
 //    private static final String EXTRA_TASK_LIST_ID = "@default";
 //    private static final String EXTRA_TASK_LIST_ID = "MTQwNTcwNjU5NDk3NjE4NDI0ODE6MTQ2NDM4MDcxODow";
 
@@ -90,7 +91,7 @@ public class TaskListActivity extends Activity
         Log.d(TAG, "taskListId=" + taskListId);
 
 ////////////////
-        setContentView(R.layout.activity_main3);
+        setContentView(R.layout.activity_list_of_tasks);
 
         mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
@@ -135,8 +136,8 @@ public class TaskListActivity extends Activity
     public void onTaskSelected(String id) {
         Toast.makeText(this, id, Toast.LENGTH_SHORT).show();
 
-//        Intent intent = new Intent(this, TaskListActivity.class);
-//        intent.putExtra(TaskListActivity.EXTRA_TASK_LIST_ID, id);
+//        Intent intent = new Intent(this, ListOfTasksActivity.class);
+//        intent.putExtra(ListOfTasksActivity.EXTRA_TASK_LIST_ID, id);
 //        startActivity(intent);
     }
 
@@ -359,7 +360,7 @@ public class TaskListActivity extends Activity
                 if (mLastError instanceof UserRecoverableAuthIOException) {
                     startActivityForResult(
                             ((UserRecoverableAuthIOException) mLastError).getIntent(),
-                            TaskListActivity.REQUEST_AUTHORIZATION);
+                            ListOfTasksActivity.REQUEST_AUTHORIZATION);
                 } else {
 //                    mOutputText.setText("The following error occurred:\n"
 //                            + mLastError.getMessage() + "\n" + msg);
@@ -478,7 +479,7 @@ public class TaskListActivity extends Activity
         protected void onPostExecute(List<Task> output) {
 //            mOutputText.setText(msg);
 //            List<TaskList> items = output.getItems();
-            mAdapter =  new TasksRecyclerViewAdapter(TaskListActivity.this, output);
+            mAdapter =  new TasksRecyclerViewAdapter(ListOfTasksActivity.this, output);
             mRecyclerView.setAdapter(mAdapter);
             taskComplete();
         }
@@ -489,7 +490,7 @@ public class TaskListActivity extends Activity
                 if (mLastError instanceof UserRecoverableAuthIOException) {
                     startActivityForResult(
                             ((UserRecoverableAuthIOException) mLastError).getIntent(),
-                            TaskListActivity.REQUEST_AUTHORIZATION);
+                            ListOfTasksActivity.REQUEST_AUTHORIZATION);
                 } else {
 //                    mOutputText.setText("The following error occurred:\n"
 //                            + mLastError.getMessage() + "\n" + msg);
@@ -566,6 +567,14 @@ public class TaskListActivity extends Activity
             disableKeepScreenOn();
         }
 
+    }
+
+    public void onMoveCompetedToBin(View view) {
+        Log.d(TAG, "onMoveCompetedToBin");
+    }
+
+    public void onMoveCompetedToBinAndScrub(View view) {
+        Log.d(TAG, "onMoveCompetedToBinAndScrub");
     }
 
 }

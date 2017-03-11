@@ -54,12 +54,12 @@ public class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecycler
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int viewType) {
         View v = LayoutInflater.from(viewGroup.getContext())
-                .inflate(R.layout.task_item, viewGroup, false);
+                .inflate(R.layout.list_of_tasks_item, viewGroup, false);
         OnClickListener onClickListener = new OnClickListener() {
             @Override
             public void onClick(String id) {
                 Task task = mDataSet.get(Integer.parseInt(id));
-                ((TaskListActivity) context).onTaskSelected(task.getId());
+                ((ListOfTasksActivity) context).onTaskSelected(task.getId());
             }
         };
         return new ViewHolder(v, onClickListener);
