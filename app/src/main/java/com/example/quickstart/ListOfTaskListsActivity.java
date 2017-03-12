@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.DividerItemDecoration;
@@ -29,9 +30,14 @@ public class ListOfTaskListsActivity extends Activity implements EasyPermissions
         super.onCreate(savedInstanceState);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         setContentView(R.layout.activity_list_of_task_lists);
-        presenter = new PresenterImpl(this, this);
+        presenter = new PresenterImpl(this, this, getAsyncTask());
         progressDialog = new MyProgressDialog(this, presenter, "Obtaining task lists...");
         initRecyclerView();
+    }
+
+    @NonNull
+    private AsyncTask getAsyncTask() {
+        return new GetTasksListsTask();
     }
 
     private void initRecyclerView() {

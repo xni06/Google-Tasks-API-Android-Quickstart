@@ -37,8 +37,6 @@ interface Contract {
 
         void cancelTask();
 
-        void executeGetTasksListsTask();
-
         void onPause();
 
         void onResume();

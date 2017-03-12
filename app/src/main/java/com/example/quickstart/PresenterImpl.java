@@ -7,14 +7,20 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.support.v7.widget.RecyclerView;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
+import com.google.api.services.tasks.Tasks;
 import com.google.api.services.tasks.TasksScopes;
 import com.google.api.services.tasks.model.TaskLists;
 
@@ -34,12 +40,15 @@ class PresenterImpl implements Contract.Presenter {
     private final Activity activity;
     private final GoogleAccountCredential credential;
     private Contract.View view;
-    private GetTasksListsTask asyncTask;
+    private AsyncTask asyncTask;
 
-    PresenterImpl(Activity activity, Contract.View view) {
-        this.view = view;
+    PresenterImpl(Activity activity, Contract.View view, AsyncTask asyncTask) {
         this.activity = activity;
+        this.view = view;
+        this.asyncTask = asyncTask;
         credential = getGoogleAccountCredential();
+        ((GetTasksListsTask) asyncTask).setPresenter(this);//TODO create interface
+        ((GetTasksListsTask) asyncTask).setTasksService(getTasksService());
     }
 
     @Override
@@ -57,14 +66,12 @@ class PresenterImpl implements Contract.Presenter {
         return connectionStatusCode == ConnectionResult.SUCCESS;
     }
 
-    @Override
-    public void executeGetTasksListsTask() {
+    private void executeAsyncTask() {
         if (!isGooglePlayServicesAvailable()) {
             acquireGooglePlayServices();
         } else if (credential.getSelectedAccountName() == null) {
             chooseAccount();
         } else {
-            asyncTask = new GetTasksListsTask(this, credential);//TODO inject so that we can reuse the presenter
             asyncTask.execute();
         }
     }
@@ -93,7 +100,7 @@ class PresenterImpl implements Contract.Presenter {
             String accountName = activity.getPreferences(Context.MODE_PRIVATE).getString(PREF_ACCOUNT_NAME, null);
             if (accountName != null) {
                 credential.setSelectedAccountName(accountName);
-                executeGetTasksListsTask();//TODO inject so that we can reuse the presenter
+                executeAsyncTask();//TODO inject so that we can reuse the presenter
             } else {
                 activity.startActivityForResult(credential.newChooseAccountIntent(), REQUEST_ACCOUNT_PICKER);
             }
@@ -111,7 +118,7 @@ class PresenterImpl implements Contract.Presenter {
         switch (requestCode) {
             case REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode == RESULT_OK)
-                    executeGetTasksListsTask(); //TODO inject so that we can reuse the presenter
+                    executeAsyncTask(); //TODO inject so that we can reuse the presenter
                 break;
             case REQUEST_ACCOUNT_PICKER:
                 if (resultCode == RESULT_OK && intent != null && intent.getExtras() != null) {
@@ -122,20 +129,20 @@ class PresenterImpl implements Contract.Presenter {
                         editor.putString(PREF_ACCOUNT_NAME, accountName);
                         editor.apply();
                         credential.setSelectedAccountName(accountName);
-                        executeGetTasksListsTask(); //TODO inject so that we can reuse the presenter
+                        executeAsyncTask(); //TODO inject so that we can reuse the presenter
                     }
                 }
                 break;
             case REQUEST_AUTHORIZATION:
                 if (resultCode == RESULT_OK)
-                    executeGetTasksListsTask(); //TODO inject so that we can reuse the presenter
+                    executeAsyncTask(); //TODO inject so that we can reuse the presenter
                 break;
         }
     }
 
     @Override
     public void onResume() {
-        executeGetTasksListsTask();//TODO inject so that we can reuse the presenter
+        executeAsyncTask();//TODO inject so that we can reuse the presenter
     }
 
     @Override
@@ -181,6 +188,15 @@ class PresenterImpl implements Contract.Presenter {
             }
         }
         taskComplete();
+    }
+
+    private com.google.api.services.tasks.Tasks getTasksService() {
+        HttpTransport transport = AndroidHttp.newCompatibleTransport();
+        JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+        return new Tasks.Builder(
+                transport, jsonFactory, this.credential)
+                .setApplicationName("Google Tasks API Android Quickstart")
+                .build();
     }
 
 }
