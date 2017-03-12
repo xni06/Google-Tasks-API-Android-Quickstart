@@ -20,8 +20,8 @@ class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecyclerViewAda
 
         ViewHolder(View v) {
             super(v);
-            title = (TextView) v.findViewById(R.id.title);
-            note = (TextView) v.findViewById(R.id.note);
+            title = (TextView) v.findViewById(android.R.id.text1);
+            note = (TextView) v.findViewById(android.R.id.text2);
         }
 
         TextView getTitle() {
@@ -41,7 +41,7 @@ class TasksRecyclerViewAdapter extends RecyclerView.Adapter<TasksRecyclerViewAda
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int viewType) {
         View v = LayoutInflater.from(viewGroup.getContext())
-                .inflate(R.layout.list_of_tasks_item, viewGroup, false);
+                .inflate(android.R.layout.simple_list_item_2, viewGroup, false);
         return new ViewHolder(v);
     }
 

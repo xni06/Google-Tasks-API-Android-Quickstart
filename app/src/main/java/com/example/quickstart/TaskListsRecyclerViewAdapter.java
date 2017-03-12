@@ -25,7 +25,7 @@ class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskListsRecycle
 
         ViewHolder(View v, final OnClickListener listener) {
             super(v);
-            title = (TextView) v.findViewById(R.id.title);
+            title = (TextView) v.findViewById(android.R.id.text1);
             v.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -48,7 +48,7 @@ class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskListsRecycle
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int viewType) {
         View v = LayoutInflater.from(viewGroup.getContext())
-                .inflate(R.layout.list_of_task_list_item, viewGroup, false);
+                .inflate(android.R.layout.simple_list_item_1, viewGroup, false);
         OnClickListener onClickListener = new OnClickListener() {
             @Override
             public void onClick(String id) {
