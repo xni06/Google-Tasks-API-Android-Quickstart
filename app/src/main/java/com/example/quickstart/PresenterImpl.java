@@ -34,7 +34,7 @@ class PresenterImpl implements Contract.Presenter {
     private final Activity activity;
     private final GoogleAccountCredential credential;
     private Contract.View view;
-    private GetTasksListsTask getTasksListsTask;
+    private GetTasksListsTask asyncTask;
 
     PresenterImpl(Activity activity, Contract.View view) {
         this.view = view;
@@ -58,11 +58,52 @@ class PresenterImpl implements Contract.Presenter {
     }
 
     @Override
+    public void executeGetTasksListsTask() {
+        if (!isGooglePlayServicesAvailable()) {
+            acquireGooglePlayServices();
+        } else if (credential.getSelectedAccountName() == null) {
+            chooseAccount();
+        } else {
+            asyncTask = new GetTasksListsTask(this, credential);//TODO inject so that we can reuse the presenter
+            asyncTask.execute();
+        }
+    }
+
+    @Override
     public void acquireGooglePlayServices() {
         GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
         final int connectionStatusCode = apiAvailability.isGooglePlayServicesAvailable(activity);
         if (apiAvailability.isUserResolvableError(connectionStatusCode))
             showGooglePlayServicesAvailabilityErrorDialog(connectionStatusCode);
+    }
+
+    @Override
+    public void showGooglePlayServicesAvailabilityErrorDialog(final int connectionStatusCode) {
+        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
+        Dialog dialog = apiAvailability.getErrorDialog(
+                activity,
+                connectionStatusCode,
+                REQUEST_GOOGLE_PLAY_SERVICES);
+        dialog.show();
+    }
+
+    @Override
+    public void chooseAccount() {
+        if (hasPermissions(activity, Manifest.permission.GET_ACCOUNTS)) {
+            String accountName = activity.getPreferences(Context.MODE_PRIVATE).getString(PREF_ACCOUNT_NAME, null);
+            if (accountName != null) {
+                credential.setSelectedAccountName(accountName);
+                executeGetTasksListsTask();//TODO inject so that we can reuse the presenter
+            } else {
+                activity.startActivityForResult(credential.newChooseAccountIntent(), REQUEST_ACCOUNT_PICKER);
+            }
+        } else {
+            EasyPermissions.requestPermissions(
+                    this,
+                    "This app needs to access your Google account (via Contacts).",
+                    REQUEST_PERMISSION_GET_ACCOUNTS,
+                    Manifest.permission.GET_ACCOUNTS);
+        }
     }
 
     @Override
@@ -93,40 +134,8 @@ class PresenterImpl implements Contract.Presenter {
     }
 
     @Override
-    public void chooseAccount() {
-        if (hasPermissions(activity, Manifest.permission.GET_ACCOUNTS)) {
-            String accountName = activity.getPreferences(Context.MODE_PRIVATE).getString(PREF_ACCOUNT_NAME, null);
-            if (accountName != null) {
-                credential.setSelectedAccountName(accountName);
-                executeGetTasksListsTask();//TODO inject so that we can reuse the presenter
-            } else {
-                activity.startActivityForResult(credential.newChooseAccountIntent(), REQUEST_ACCOUNT_PICKER);
-            }
-        } else {
-            EasyPermissions.requestPermissions(
-                    this,
-                    "This app needs to access your Google account (via Contacts).",
-                    REQUEST_PERMISSION_GET_ACCOUNTS,
-                    Manifest.permission.GET_ACCOUNTS);
-        }
-
-    }
-
-    @Override
-    public void cancelTask() {
-        if (getTasksListsTask != null) getTasksListsTask.cancel(true);
-    }
-
-    @Override
-    public void executeGetTasksListsTask() {
-        if (!isGooglePlayServicesAvailable()) {
-            acquireGooglePlayServices();
-        } else if (credential.getSelectedAccountName() == null) {
-            chooseAccount();
-        } else {
-            getTasksListsTask = new GetTasksListsTask(this, credential);//TODO inject so that we can reuse the presenter
-            getTasksListsTask.execute();
-        }
+    public void onResume() {
+        executeGetTasksListsTask();//TODO inject so that we can reuse the presenter
     }
 
     @Override
@@ -135,14 +144,8 @@ class PresenterImpl implements Contract.Presenter {
     }
 
     @Override
-    public void onResume() {
-        executeGetTasksListsTask();//TODO inject so that we can reuse the presenter
-    }
-
-    @Override
-    public void taskComplete() {
-        view.hideProgress();
-        view.disableKeepScreenOn();
+    public void cancelTask() {
+        if (asyncTask != null) asyncTask.cancel(true);
     }
 
     @Override
@@ -159,6 +162,12 @@ class PresenterImpl implements Contract.Presenter {
     }
 
     @Override
+    public void taskComplete() {
+        view.hideProgress();
+        view.disableKeepScreenOn();
+    }
+
+    @Override
     public void onCancelled(Exception exception) {
         if (exception != null) {
             if (exception instanceof GooglePlayServicesAvailabilityIOException) {
@@ -172,16 +181,6 @@ class PresenterImpl implements Contract.Presenter {
             }
         }
         taskComplete();
-    }
-
-    @Override
-    public void showGooglePlayServicesAvailabilityErrorDialog(final int connectionStatusCode) {
-        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
-        Dialog dialog = apiAvailability.getErrorDialog(
-                activity,
-                connectionStatusCode,
-                REQUEST_GOOGLE_PLAY_SERVICES);
-        dialog.show();
     }
 
 }
