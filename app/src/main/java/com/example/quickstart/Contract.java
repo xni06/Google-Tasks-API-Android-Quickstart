@@ -30,7 +30,7 @@ interface Contract {
 
         void acquireGooglePlayServices();
 
-        void onActivity(int requestCode, int resultCode, Intent data);
+        void onActivityResult(int requestCode, int resultCode, Intent data);
 
         void chooseAccount();
 

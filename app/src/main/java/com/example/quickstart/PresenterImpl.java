@@ -75,11 +75,11 @@ class PresenterImpl implements Contract.Presenter {
     }
 
     @Override
-    public void onActivity(int requestCode, int resultCode, Intent data) {
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
             case REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode == RESULT_OK)
-                    executeGetTasksListsTask();
+                    executeGetTasksListsTask(); //TODO inject so that we can reuse the presenter
                 break;
             case REQUEST_ACCOUNT_PICKER:
                 if (resultCode == RESULT_OK && data != null && data.getExtras() != null) {
@@ -90,13 +90,13 @@ class PresenterImpl implements Contract.Presenter {
                         editor.putString(PREF_ACCOUNT_NAME, accountName);
                         editor.apply();
                         mCredential.setSelectedAccountName(accountName);
-                        executeGetTasksListsTask();
+                        executeGetTasksListsTask(); //TODO inject so that we can reuse the presenter
                     }
                 }
                 break;
             case REQUEST_AUTHORIZATION:
                 if (resultCode == RESULT_OK)
-                    executeGetTasksListsTask();
+                    executeGetTasksListsTask(); //TODO inject so that we can reuse the presenter
                 break;
         }
 
@@ -108,7 +108,7 @@ class PresenterImpl implements Contract.Presenter {
             String accountName = activity.getPreferences(Context.MODE_PRIVATE).getString(PREF_ACCOUNT_NAME, null);
             if (accountName != null) {
                 mCredential.setSelectedAccountName(accountName);
-                executeGetTasksListsTask();
+                executeGetTasksListsTask();//TODO inject so that we can reuse the presenter
             } else {
                 activity.startActivityForResult(mCredential.newChooseAccountIntent(), REQUEST_ACCOUNT_PICKER);
             }
@@ -134,7 +134,7 @@ class PresenterImpl implements Contract.Presenter {
         } else if (mCredential.getSelectedAccountName() == null) {
             chooseAccount();
         } else {
-            mMakeRequestTask = new GetTasksListsTask(mCredential);
+            mMakeRequestTask = new GetTasksListsTask(mCredential);//TODO inject so that we can reuse the presenter
             mMakeRequestTask.execute();
         }
     }
@@ -146,7 +146,7 @@ class PresenterImpl implements Contract.Presenter {
 
     @Override
     public void onResume() {
-        executeGetTasksListsTask();
+        executeGetTasksListsTask();//TODO inject so that we can reuse the presenter
     }
 
 
@@ -192,7 +192,7 @@ class PresenterImpl implements Contract.Presenter {
 
         @Override
         protected void onPostExecute(TaskLists output) {
-            RecyclerView.Adapter mAdapter = new TaskListsRecyclerViewAdapter(activity, output);
+            RecyclerView.Adapter mAdapter = new TaskListsRecyclerViewAdapter(activity, output);//TODO inject so that we can reuse the presenter
             view.setAdapter(mAdapter);
             taskComplete();
         }
