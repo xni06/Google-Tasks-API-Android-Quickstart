@@ -53,7 +53,7 @@ class TaskListsRecyclerViewAdapter extends RecyclerView.Adapter<TaskListsRecycle
             @Override
             public void onClick(String id) {
                 TaskList taskList = mDataSet.getItems().get(Integer.parseInt(id));
-                ((ListOfTaskListsActivity) context).onTaskListSelected(taskList.getId());
+                ((OnItemSelected) context).onItemSelected(taskList.getId());
             }
         };
         return new ViewHolder(v, onClickListener);
