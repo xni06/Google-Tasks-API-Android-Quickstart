@@ -40,15 +40,15 @@ class PresenterImpl implements Contract.Presenter {
     private final Activity activity;
     private final GoogleAccountCredential credential;
     private Contract.View view;
-    private AsyncTask asyncTask;
+    private InjectableAsyncTasks asyncTask;
 
-    PresenterImpl(Activity activity, Contract.View view, AsyncTask asyncTask) {
+    PresenterImpl(Activity activity, Contract.View view, InjectableAsyncTasks asyncTask) {
         this.activity = activity;
         this.view = view;
         this.asyncTask = asyncTask;
         credential = getGoogleAccountCredential();
-        ((GetTasksListsTask) asyncTask).setPresenter(this);//TODO create interface
-        ((GetTasksListsTask) asyncTask).setTasksService(getTasksService());
+        asyncTask.setPresenter(this);
+        asyncTask.setTasksService(getTasksService());
     }
 
     @Override
@@ -72,7 +72,7 @@ class PresenterImpl implements Contract.Presenter {
         } else if (credential.getSelectedAccountName() == null) {
             chooseAccount();
         } else {
-            asyncTask.execute();
+            ((AsyncTask)asyncTask).execute();
         }
     }
 
@@ -152,7 +152,7 @@ class PresenterImpl implements Contract.Presenter {
 
     @Override
     public void cancelTask() {
-        if (asyncTask != null) asyncTask.cancel(true);
+        if (asyncTask != null) ((AsyncTask) asyncTask).cancel(true);
     }
 
     @Override

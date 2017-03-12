@@ -7,7 +7,7 @@ import com.google.api.services.tasks.model.TaskLists;
 
 import java.io.IOException;
 
-class GetTasksListsTask extends AsyncTask<Object, Object, TaskLists> {
+class GetTasksListsTask extends AsyncTask<Object, Object, TaskLists> implements InjectableAsyncTasks {
     private Contract.Presenter presenter;
     private Exception exception;
     private Tasks tasksService;
@@ -15,11 +15,13 @@ class GetTasksListsTask extends AsyncTask<Object, Object, TaskLists> {
     GetTasksListsTask() {
     }
 
-    void setTasksService(Tasks tasksService) {
+    @Override
+    public void setTasksService(Tasks tasksService) {
         this.tasksService = tasksService;
     }
 
-    void setPresenter(Contract.Presenter presenter) {
+    @Override
+    public void setPresenter(Contract.Presenter presenter) {
         this.presenter = presenter;
     }
 

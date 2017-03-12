@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.DividerItemDecoration;
@@ -36,7 +35,7 @@ public class ListOfTaskListsActivity extends Activity implements EasyPermissions
     }
 
     @NonNull
-    private AsyncTask getAsyncTask() {
+    private InjectableAsyncTasks getAsyncTask() {
         return new GetTasksListsTask();
     }
 
