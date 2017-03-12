@@ -18,6 +18,7 @@ import pub.devrel.easypermissions.EasyPermissions;
 import static android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
 import static com.example.quickstart.Contract.Presenter.REQUEST_PERMISSION_GET_ACCOUNTS;
 
+//TODO once all done, perhaps run agains SonarQube to compare complexity
 public class ListOfTaskListsActivity extends Activity implements EasyPermissions.PermissionCallbacks, Contract.View, OnItemSelected {
 
     private ProgressDialog progressDialog;
