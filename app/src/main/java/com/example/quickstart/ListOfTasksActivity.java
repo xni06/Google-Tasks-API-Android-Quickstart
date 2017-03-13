@@ -251,11 +251,13 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
             Tasks tasks = getFirstPageOfAllTasksIncludingDeleted();
             do {
                 for (Task task : tasks.getItems()) {
-                    task = scrub(task);
-                    updateTask(task);
+                    if (isCandidateForScrubbing(task)) {
+                        task = scrub(task);
+                        updateTask(task);
 
-                    msg = "Number of tasks scrubbed: " + ++taskCount;
-                    publishProgress(msg);
+                        msg = "Number of tasks scrubbed: " + ++taskCount;
+                        publishProgress(msg);
+                    }
 
                     if (isCancelled())
                         return;
@@ -264,6 +266,10 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
                 tasks = getAllTasksIncludingDeletedUsing(tasks.getNextPageToken());
             }
             while (!TextUtils.isEmpty(tasks.getNextPageToken()));
+        }
+
+        private boolean isCandidateForScrubbing(Task task) {
+            return task.getStatus().equalsIgnoreCase("completed");
         }
 
         private Tasks getFirstPageOfAllTasksIncludingDeleted() throws IOException {
