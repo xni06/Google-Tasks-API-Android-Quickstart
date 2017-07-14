@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.quickstart"
-        minSdkVersion 14
+        minSdkVersion 25
         targetSdkVersion 25
         versionCode 2
         versionName "2.0"

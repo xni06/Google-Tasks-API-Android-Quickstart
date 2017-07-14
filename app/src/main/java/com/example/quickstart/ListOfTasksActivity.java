@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
@@ -45,7 +46,7 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
     public static final String EXTRA_TASK_LIST_ID = "task_list_id";
     private static final String TAG = ListOfTasksActivity.class.getSimpleName();
     private GoogleAccountCredential mCredential;
-    private ScrubTasks mScrubTasks;
+    private UpdateTasks mUpdateTasks;
     private GetTasksTask mGetTasksTask;
     private ProgressDialog mProgress;
 
@@ -110,7 +111,7 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
 
     private void cancelTask() {
         if (mGetTasksTask != null) mGetTasksTask.cancel(true);
-        if (mScrubTasks != null) mScrubTasks.cancel(true);
+        if (mUpdateTasks != null) mUpdateTasks.cancel(true);
     }
 
     private void executeGetTasksTask() {
@@ -193,13 +194,15 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
         getWindow().clearFlags(FLAG_KEEP_SCREEN_ON);
     }
 
-    private class ScrubTasks extends AsyncTask<Void, String, Void> {
+    private class UpdateTasks extends AsyncTask<Void, String, Void> {
+        private final boolean scrub;
         private com.google.api.services.tasks.Tasks mService = null;
         private Exception mLastError = null;
         private String msg = "There are no tasks to move!";
         private int taskCount = 0;
 
-        ScrubTasks(GoogleAccountCredential credential) {
+        UpdateTasks(GoogleAccountCredential credential, boolean scrub) {
+            this.scrub = scrub;
             HttpTransport transport = AndroidHttp.newCompatibleTransport();
             JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
             mService = new com.google.api.services.tasks.Tasks.Builder(
@@ -217,7 +220,7 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
         @Override
         protected Void doInBackground(Void... params) {
             try {
-                scrubTasks();
+                updateTasks();
             } catch (Exception e) {
                 mLastError = e;
                 cancel(true);
@@ -247,16 +250,19 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
             taskComplete();
         }
 
-        private void scrubTasks() throws IOException {
+        private void updateTasks() throws IOException {
             Tasks tasks = getFirstPageOfAllTasksIncludingDeleted();
             do {
                 for (Task task : tasks.getItems()) {
-                    if (isCandidateForScrubbing(task)) {
-                        task = scrub(task);
-                        updateTask(task);
+                    if (isCandidateForUpdating(task)) {
 
-                        msg = "Number of tasks scrubbed: " + ++taskCount;
+                        updateTask(createNew(task));
+
+                        msg = "Number of tasks processed: " + ++taskCount;
+                        Log.d(TAG, "updateTasks: " + msg);
                         publishProgress(msg);
+                    } else {
+                        Log.d(TAG, "skipping " + task.getTitle());
                     }
 
                     if (isCancelled())
@@ -268,8 +274,13 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
             while (!TextUtils.isEmpty(tasks.getNextPageToken()));
         }
 
-        private boolean isCandidateForScrubbing(Task task) {
-            return task.getStatus().equalsIgnoreCase("completed");
+        private boolean isCandidateForUpdating(Task task) {
+            return task.getStatus().equalsIgnoreCase("completed") || isTaskDeleted(task);
+        }
+
+        private boolean isTaskDeleted(Task task) {
+            Boolean deleted = (Boolean) task.get("deleted");
+            return Objects.equals(deleted, Boolean.TRUE);
         }
 
         private Tasks getFirstPageOfAllTasksIncludingDeleted() throws IOException {
@@ -277,6 +288,7 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
         }
 
         private Tasks getAllTasksIncludingDeletedUsing(String pageToken) throws IOException {
+            Log.d(TAG, "getAllTasksIncludingDeletedUsing() called with: pageToken = [" + pageToken + "]");
             com.google.api.services.tasks.Tasks.TasksOperations.List l =
                     mService.tasks()
                             .list(taskListId)
@@ -286,14 +298,20 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
 
             if (!TextUtils.isEmpty(pageToken))
                 l.setPageToken(pageToken);
-            return l.execute();
+            Tasks tasks = l.execute();
+            Log.d(TAG, "getAllTasksIncludingDeletedUsing: #tasks=" + tasks.getItems().size());
+            return tasks;
         }
 
-        private Task scrub(Task task) {
+        private Task createNew(Task task) {
             Task t = new Task();
             t.setId(task.getId());
-            t.setTitle("scrubbed title");
-            t.setNotes("scrubbed notes");
+
+            if (scrub) {
+                t.setTitle("scrubbed title");
+                t.setNotes("scrubbed notes");
+            }
+
             t.setDeleted(true);
             t.setStatus("needsAction");
             t.setDue(null);
@@ -335,7 +353,7 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
         protected List<Task> doInBackground(Object... params) {
             List<Task> tasks = null;
             try {
-                tasks = scrubTasks();
+                tasks = getTasks();
             } catch (Exception e) {
                 mLastError = e;
                 cancel(true);
@@ -362,7 +380,7 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
             taskComplete();
         }
 
-        private List<Task> scrubTasks() throws IOException {
+        private List<Task> getTasks() throws IOException {
             List<Task> t = new ArrayList<>();
 
             Tasks tasks = getFirstPageOfAllTasksIncludingDeleted();
@@ -397,21 +415,6 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
             return l.execute();
         }
 
-        private Task scrub(Task task) {
-            Task t = new Task();
-            t.setId(task.getId());
-            t.setTitle("scrubbed title");
-            t.setNotes("scrubbed notes");
-            t.setDeleted(true);
-            t.setStatus("needsAction");
-            t.setDue(null);
-            return t;
-        }
-
-        private void updateTask(Task t) throws IOException {
-            mService.tasks().update(taskListId, t.getId(), t).execute();
-        }
-
         private void taskComplete() {
             mProgress.hide();
             mProgress.setMessage(DEFAULT_PROGRESS_TEXT);
@@ -422,12 +425,17 @@ public class ListOfTasksActivity extends Activity implements EasyPermissions.Per
 
     public void onMoveCompetedToBin(View view) {
         Log.d(TAG, "onMoveCompetedToBin");
+        updateTasks(false);
     }
 
     public void onMoveCompetedToBinAndScrub(View view) {
         Log.d(TAG, "onMoveCompetedToBinAndScrub");
-        mScrubTasks = new ScrubTasks(mCredential);
-        mScrubTasks.execute();
+        updateTasks(true);
+    }
+
+    private void updateTasks(boolean scrub) {
+        mUpdateTasks = new UpdateTasks(mCredential, scrub);
+        mUpdateTasks.execute();
     }
 
 }

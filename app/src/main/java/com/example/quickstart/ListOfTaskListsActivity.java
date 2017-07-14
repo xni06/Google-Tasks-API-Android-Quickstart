@@ -30,7 +30,6 @@ public class ListOfTaskListsActivity extends Activity implements EasyPermissions
         super.onCreate(savedInstanceState);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         setContentView(R.layout.activity_list_of_task_lists);
-        presenter = new PresenterImpl(this, this, getAsyncTask());
         progressDialog = new MyProgressDialog(this, presenter, "Obtaining task lists...");
         initRecyclerView();
     }
@@ -57,6 +56,7 @@ public class ListOfTaskListsActivity extends Activity implements EasyPermissions
     @Override
     protected void onResume() {
         super.onResume();
+        presenter = new PresenterImpl(this, this, getAsyncTask());
         presenter.onResume();
     }
 
