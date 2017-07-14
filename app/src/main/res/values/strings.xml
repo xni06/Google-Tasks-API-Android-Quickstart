@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">"Google Tasks API "</string>
+    <string name="app_name">"Tasks Scrubber"</string>
     <string name="completed_bin"><![CDATA[Move Completed to Bin]]></string>
     <string name="completed_bin_scrub"><![CDATA[Scrub Completed + Bin]]></string>
 </resources>
