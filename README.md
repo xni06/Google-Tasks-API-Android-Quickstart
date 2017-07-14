@@ -7,22 +7,9 @@ You can see your existing tasks [here](https://mail.google.com/tasks/canvas?pli=
 
 It is based on the [original quickstart](https://github.com/xni06/Google-Tasks-API-Android-Quickstart) branch but has been [modified](https://github.com/xni06/Google-Tasks-API-Android-Quickstart/commit/fee0b65f3be3fd28fa88785b19f6ff1ce3494bee) so that it:
 
-1. Copies up to 100 tasks (default max results) individually from the _default_ list to the destination list called `movedTasks`
-1. Deletes the copied tasks from default list individually
-
-### Usage
-1. Press the big button at the top of the screen until all tasks have been moved!
-1. Once all the tasks have been _moved_ from your _default_ list, you can then delete the `movedTasks` list.
-
-### Testing
-It has been tested on the following devices:
-
-|Emulator|Nexus 5|Google Pixel|
-|---|---|---|
-|OK|?|?|
-
-### Release APK
-The release APK can be found [here](app-release.apk) to save you having to set up the keys and building yourself.
+For a given task list...
+1. Iterates through completed tasks and moves to bin, or
+2. as above but also scrubs the task name and contents, including the bin
 
 ### Notes
 1. this has been created to move my +3000 tasks from my default list (previously in the _trash_) so that they can disappear for eternity - it did the job perfectly though it did take a while to run having had to press the big button 30 times or more
